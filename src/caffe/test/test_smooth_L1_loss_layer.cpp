@@ -8,15 +8,12 @@
 #include "caffe/blob.hpp"
 #include "caffe/common.hpp"
 #include "caffe/filler.hpp"
-#include "caffe/vision_layers.hpp"
 #include "caffe/fast_rcnn_layers.hpp"
 
 #include "caffe/test/test_caffe_main.hpp"
 #include "caffe/test/test_gradient_check_util.hpp"
 
 namespace caffe {
-
-typedef ::testing::Types<GPUDevice<float>, GPUDevice<double> > TestDtypesGPU;
 
 template <typename TypeParam>
 class SmoothL1LossLayerTest : public MultiDeviceTest<TypeParam> {
@@ -67,7 +64,7 @@ class SmoothL1LossLayerTest : public MultiDeviceTest<TypeParam> {
   vector<Blob<Dtype>*> blob_top_vec_;
 };
 
-TYPED_TEST_CASE(SmoothL1LossLayerTest, TestDtypesGPU);
+TYPED_TEST_CASE(SmoothL1LossLayerTest, TestDtypesAndDevices);
 
 TYPED_TEST(SmoothL1LossLayerTest, TestGradient) {
   typedef typename TypeParam::Dtype Dtype;
