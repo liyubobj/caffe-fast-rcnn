@@ -52,6 +52,15 @@ void classname<Dtype>::funcname##_##gpu(const vector<Blob<Dtype>*>& top, \
     CHECK_EQ(error, cudaSuccess) << " " << cudaGetErrorString(error); \
   } while (0)
 
+#define CUDA_CHECK_IGNORE_CUDART_UNLOADING(condition) \
+  /* Code block avoids redefinition of cudaError_t error */ \
+  do { \
+    cudaError_t error = condition; \
+    if(error != cudaErrorCudartUnloading){\
+      CHECK_EQ(error, cudaSuccess) << " " << cudaGetErrorString(error); \
+    } \
+  } while (0)
+
 #define CUBLAS_CHECK(condition) \
   do { \
     cublasStatus_t status = condition; \

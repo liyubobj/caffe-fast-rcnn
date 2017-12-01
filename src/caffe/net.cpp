@@ -6,7 +6,6 @@
 #include <vector>
 
 #include "hdf5.h"
-#include "cuda_profiler_api.h"
 
 #include "caffe/common.hpp"
 #include "caffe/layer.hpp"
@@ -577,9 +576,7 @@ Dtype Net<Dtype>::ForwardFromTo(int start, int end) {
     Dtype layer_loss = layers_[i]->Forward(bottom_vecs_[i], top_vecs_[i]);
     loss += layer_loss;
     if (debug_info_) { ForwardDebugInfo(i); }
-    //ForwardDebugInfo(i); 
   }
-  //cudaProfilerStop();
   return loss;
 }
 

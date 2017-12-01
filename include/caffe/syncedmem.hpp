@@ -15,8 +15,7 @@ namespace caffe {
 inline void CaffeMallocHost(void** ptr, size_t size, bool* use_cuda) {
 #ifndef CPU_ONLY
   if (Caffe::mode() == Caffe::GPU) {
-    //CUDA_CHECK(cudaMallocHost(ptr, size));
-    CUDA_CHECK(cudaMallocManaged(ptr, size));
+    CUDA_CHECK(cudaMallocHost(ptr, size));
     *use_cuda = true;
     return;
   }
@@ -29,9 +28,41 @@ inline void CaffeMallocHost(void** ptr, size_t size, bool* use_cuda) {
 inline void CaffeFreeHost(void* ptr, bool use_cuda) {
 #ifndef CPU_ONLY
   if (use_cuda) {
-    //CUDA_CHECK(cudaFreeHost(ptr));
-    //CUDA_CHECK(cudaFree(ptr));
-    cudaFree(ptr);
+    CUDA_CHECK(cudaFreeHost(ptr));
+    return;
+  }
+#endif
+  free(ptr);
+}
+
+inline void CaffeMallocManaged(void** ptr, size_t size, bool* use_cuda) {
+#ifndef CPU_ONLY
+  if (Caffe::mode() == Caffe::GPU) {
+    CUDA_CHECK(cudaMallocManaged(ptr, size));
+    *use_cuda = true;
+    return;
+  }
+#endif
+  *ptr = malloc(size);
+  *use_cuda = false;
+  CHECK(*ptr) << "host allocation of size " << size << " failed";
+}
+
+inline void CaffeFreeHostOrDevice(void* ptr, bool use_cuda) {
+#ifndef CPU_ONLY
+  if(use_cuda) {
+    cudaPointerAttributes attr;
+    CUDA_CHECK_IGNORE_CUDART_UNLOADING(cudaPointerGetAttributes(&attr, ptr));
+
+    if(attr.memoryType == cudaMemoryTypeHost)
+    {
+      CUDA_CHECK(cudaFreeHost(ptr));
+    }
+    else if(attr.memoryType == cudaMemoryTypeDevice)
+    {
+      CUDA_CHECK_IGNORE_CUDART_UNLOADING(cudaFree(ptr));
+    }
+
     return;
   }
 #endif
