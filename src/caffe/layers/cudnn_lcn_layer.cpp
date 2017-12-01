@@ -46,8 +46,8 @@ void CuDNNLCNLayer<Dtype>::Reshape(const vector<Blob<Dtype>*>& bottom,
     cudaFree(tempData2);
 
     // allocate new buffers
-    CUDA_CHECK(cudaMalloc(&tempData1, totalSizeInBytes));
-    CUDA_CHECK(cudaMalloc(&tempData2, totalSizeInBytes));
+    CUDA_CHECK(cudaMallocManaged(&tempData1, totalSizeInBytes));
+    CUDA_CHECK(cudaMallocManaged(&tempData2, totalSizeInBytes));
   }
 }
 

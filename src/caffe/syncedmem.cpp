@@ -13,10 +13,7 @@ SyncedMemory::~SyncedMemory() {
   if (gpu_ptr_ && own_gpu_data_) {
     int initial_device;
     cudaGetDevice(&initial_device);
-    if (gpu_device_ != -1) {
-      CUDA_CHECK(cudaSetDevice(gpu_device_));
-    }
-    CUDA_CHECK(cudaFree(gpu_ptr_));
+    cudaFree(gpu_ptr_);
     cudaSetDevice(initial_device);
   }
 #endif  // CPU_ONLY
@@ -29,14 +26,15 @@ inline void SyncedMemory::to_cpu() {
     caffe_memset(size_, 0, cpu_ptr_);
     head_ = HEAD_AT_CPU;
     own_cpu_data_ = true;
+   
     break;
   case HEAD_AT_GPU:
 #ifndef CPU_ONLY
-    if (cpu_ptr_ == NULL) {
-      CaffeMallocHost(&cpu_ptr_, size_, &cpu_malloc_use_cuda_);
+    if (gpu_ptr_ == NULL) {
+      CaffeMallocHost(&gpu_ptr_, size_, &cpu_malloc_use_cuda_);
       own_cpu_data_ = true;
     }
-    caffe_gpu_memcpy(size_, gpu_ptr_, cpu_ptr_);
+    cpu_ptr_ = gpu_ptr_;
     head_ = SYNCED;
 #else
     NO_GPU;
@@ -53,18 +51,20 @@ inline void SyncedMemory::to_gpu() {
   switch (head_) {
   case UNINITIALIZED:
     CUDA_CHECK(cudaGetDevice(&gpu_device_));
-    CUDA_CHECK(cudaMalloc(&gpu_ptr_, size_));
+    CUDA_CHECK(cudaMallocManaged(&gpu_ptr_, size_));
+    cudaMemPrefetchAsync(gpu_ptr_, size_, 0);
     caffe_gpu_memset(size_, 0, gpu_ptr_);
     head_ = HEAD_AT_GPU;
     own_gpu_data_ = true;
     break;
   case HEAD_AT_CPU:
-    if (gpu_ptr_ == NULL) {
+    
+    if (cpu_ptr_ == NULL) {
       CUDA_CHECK(cudaGetDevice(&gpu_device_));
-      CUDA_CHECK(cudaMalloc(&gpu_ptr_, size_));
+      CUDA_CHECK(cudaMallocManaged(&cpu_ptr_, size_));
       own_gpu_data_ = true;
     }
-    caffe_gpu_memcpy(size_, cpu_ptr_, gpu_ptr_);
+    gpu_ptr_ = cpu_ptr_; 
     head_ = SYNCED;
     break;
   case HEAD_AT_GPU:
@@ -143,12 +143,10 @@ void SyncedMemory::async_gpu_push(const cudaStream_t& stream) {
   CHECK(head_ == HEAD_AT_CPU);
   if (gpu_ptr_ == NULL) {
     CUDA_CHECK(cudaGetDevice(&gpu_device_));
-    CUDA_CHECK(cudaMalloc(&gpu_ptr_, size_));
+    CUDA_CHECK(cudaMallocManaged(&gpu_ptr_, size_));
     own_gpu_data_ = true;
   }
-  const cudaMemcpyKind put = cudaMemcpyHostToDevice;
-  CUDA_CHECK(cudaMemcpyAsync(gpu_ptr_, cpu_ptr_, size_, put, stream));
-  // Assume caller will synchronize on the stream before use
+  cpu_ptr_ = gpu_ptr_;
   head_ = SYNCED;
 }
 #endif
